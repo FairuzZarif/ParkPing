@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ParkPing</title>
+  <script src="/static/lib.js"></script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBL6UTU-hLgN3dDIOE8uIiSK_2tb1Pj6E8&callback=initMap"
+    async defer
+  ></script>
+  <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #ff7e5f, #feb47b);
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      margin: 1.5rem 0 1rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      user-select: none;
+    }
+
+    #map {
+      width: 90vw;
+      max-width: 900px;
+      height: 500px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      margin-bottom: 2rem;
+    }
+
+    button {
+      background: #ff7e5f;
+      border: none;
+      color: white;
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      user-select: none;
+      margin-bottom: 1.5rem;
+    }
+    button:hover {
+      background: #e26b47;
+    }
+
+    #bookingResults {
+      width: 90vw;
+      max-width: 900px;
+      background: white;
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      color: #333;
+      font-size: 1rem;
+      min-height: 80px;
+      overflow-y: auto;
+      max-height: 300px;
+      text-align: center;
+    }
+
+    .booking-item {
+      border-bottom: 1px solid #eee;
+      padding: 0.8rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .booking-info {
+      flex: 1;
+      text-align: left;
+    }
+
+    .booking-btn {
+      background: #e74c3c;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .booking-btn:hover {
+      background: #c0392b;
+    }
+  </style>
+</head>
+<body>
+  <h1>ParkPing - Find Parking</h1>
+  <div id="map" style="height: 500px; width: 100%;"></div>
+  
+  <button onclick="loadBookings()">View My Bookings</button>
+  <div id="bookingResults">No bookings loaded yet.</div>
+
+  <script>
+    // Keep your original initMap completely untouched by not overriding or changing it here.
+
+    async function loadBookings() {
+      const bookingResults = document.getElementById('bookingResults');
+      bookingResults.textContent = 'Loading bookings...';
+
+      try {
+        const res = await fetch('/api/parking/bookings');
+        if (!res.ok) throw new Error('Failed to load bookings');
+        const data = await res.json();
+        if (!data.bookings || data.bookings.length === 0) {
+          bookingResults.textContent = "You have no bookings.";
+          return;
+        }
+
+        bookingResults.innerHTML = ''; // Clear existing
+
+        data.bookings.forEach(b => {
+          const div = document.createElement('div');
+          div.classList.add('booking-item');
+
+          // Format dates for display
+          const start = new Date(b.start_time).toLocaleString();
+          const end = new Date(b.end_time).toLocaleString();
+
+          div.innerHTML = `
+            <div class="booking-info">
+              <strong>${b.address}</strong><br>
+              From: ${start}<br>
+              To: ${end}<br>
+              Cost: $${b.cost.toFixed(2)}<br>
+              Paid: ${b.paid ? 'Yes' : 'No'}
+            </div>
+            <button class="booking-btn" onclick="cancelBooking(${b.id})">Cancel</button>
+          `;
+
+          bookingResults.appendChild(div);
+        });
+      } catch (err) {
+        bookingResults.textContent = 'Error loading bookings.';
+        console.error(err);
+      }
+    }
+
+    async function cancelBooking(bookingId) {
+      if (!confirm('Are you sure you want to cancel this booking?')) return;
+      try {
+        const res = await fetch('/api/parking/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ booking_id: bookingId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.message);
+          loadBookings();
+        } else {
+          alert('Error: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Request failed.');
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>

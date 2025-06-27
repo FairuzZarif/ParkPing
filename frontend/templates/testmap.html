@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Google Maps Test</title>
+    <style>
+      #map {
+        height: 500px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Simple Map Test</h3>
+    <div id="map"></div>
+
+    <script>
+      function initMap() {
+        const center = { lat: 40.7128, lng: -74.0060 }; // New York
+        const map = new google.maps.Map(document.getElementById("map"), {
+          zoom: 12,
+          center: center,
+        });
+        new google.maps.Marker({ position: center, map: map });
+      }
+    </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJbw1UKshtlwj_rhwefy30Sf0PPXIkrGc&callback=initMap" async defer></script>
+  </body>
+</html>
