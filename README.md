@@ -30,3 +30,7 @@ IMPORTANT: Make sure you've enabled the Maps JavaScript API for your project:
 5. Go to APIs & Services > Library
 6. Search for “Maps JavaScript API”
 7. Click it → Click Enable
+
+Here's what the front page looks like, if you're too lazy to open the project yourself:
+
+![image](https://github.com/user-attachments/assets/29456330-4a40-47f6-b0ee-91a9137bce04)
