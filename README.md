@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/62bd3f8a-70d1-42fa-b276-858f3bc89503)# ParkPing - Complete Project
+ParkPing - Project
+
 ## Features
 - Google Maps integration
 - User registration/login (SQLite)
@@ -36,4 +37,4 @@ User View:
 ![image](https://github.com/user-attachments/assets/eefb268d-dcdf-4c9b-9c3a-8d6f9c0c67e6)
 
 Organizer View:
-![image](https://github.com/user-attachments/assets/192982c6-6536-4777-b2bc-6c725cb5a227)
+![image](https://github.com/user-attachments/assets/85b843a4-e942-4ca6-9395-59720ae92d60)
