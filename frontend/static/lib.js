@@ -76,14 +76,25 @@ window.loadBookings = function () {
         return;
       }
 
+      list.innerHTML += '<div style="display: flex; flex-direction: column; gap: 12px;">';
+
       data.bookings.forEach((b) => {
         list.innerHTML += `
-          <div style="margin-bottom: 10px;">
+          <div style="border-bottom: 1px solid #ccc; padding-bottom: 8px;">
             <strong>${b.address}</strong><br/>
             From: ${new Date(b.start_time).toLocaleString()}<br/>
             To: ${new Date(b.end_time).toLocaleString()}<br/>
             Cost: $${b.cost}<br/>
-            Status: ${b.paid ? "Paid" : "Unpaid"}
+            Status: ${b.paid ? "Paid" : "Unpaid"}<br/>
+            <button onclick="cancelBooking(${b.id})" style="
+              margin-top: 6px;
+              background: #e74c3c;
+              color: white;
+              border: none;
+              padding: 6px 12px;
+              border-radius: 6px;
+              cursor: pointer;
+            ">Cancel Booking</button>
           </div>
         `;
 
@@ -94,6 +105,31 @@ window.loadBookings = function () {
           icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
         });
       });
+
+      list.innerHTML += '</div>';
     })
     .catch(() => alert("Failed to load bookings"));
+};
+
+// Cancel booking by booking id
+window.cancelBooking = function (bookingId) {
+  if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+  fetch("/api/parking/cancel", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ booking_id: bookingId }),
+  })
+    .then(async (res) => {
+      if (res.ok) {
+        alert("Booking cancelled successfully.");
+        loadBookings();  // refresh bookings list
+        // Optional: refresh spots or prebook spots if needed
+        // e.g. window.initMap();
+      } else {
+        const data = await res.json();
+        alert("Cancel failed: " + (data.error || "Unknown error"));
+      }
+    })
+    .catch(() => alert("Cancel request failed due to network error."));
 };

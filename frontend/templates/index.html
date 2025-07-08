@@ -50,6 +50,26 @@
       background-color: #1c5980;
     }
 
+    /* New logout button styling */
+    #logoutBtn {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      background: #c0392b;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      z-index: 10;
+    }
+    #logoutBtn:hover {
+      background-color: #992d22;
+    }
+
     main {
       width: 90vw;
       max-width: 900px;
@@ -178,6 +198,9 @@
   <!-- Organizer Dashboard Button -->
   <button onclick="location.href='/organizer'" id="organizerBtn">Organizer Dashboard</button>
 
+  <!-- Logout Button -->
+  <button id="logoutBtn">Logout</button>
+
   <h1>ParkPing - Find Parking</h1>
 
   <main>
@@ -208,7 +231,23 @@
   </main>
 
   <script>
-    // We will add JS functions here or preferably keep in lib.js
+    // Logout button handler
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (res.ok) {
+          window.location.href = '/login';
+        } else {
+          alert('Logout failed.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Logout failed due to network error.');
+      }
+    });
 
     // Hold markers in a map for easy removal on booking/pre-booking
     let spotMarkers = new Map();
@@ -355,8 +394,104 @@
       }
     }
 
-    // Your existing loadBookings and cancelBooking functions remain in lib.js or here...
+    // Book immediate booking
+    async function book(id, rate) {
+      const hours = prompt("Enter hours:");
+      if (!hours || isNaN(hours) || hours <= 0) {
+        alert("Please enter a valid number of hours.");
+        return;
+      }
+      try {
+        const res = await fetch("/api/parking/book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spot_id: id, hours }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("Booked. Cost: $" + data.cost.toFixed(2));
+          await loadSpotsOnMap();
+          await loadSpotsForPrebook();
+        } else {
+          alert(data.error || "Booking failed, please try again.");
+        }
+      } catch {
+        alert("Booking failed, please try again.");
+      }
+    }
 
+    // Cancel booking function
+    async function cancelBooking(bookingId) {
+      if (!confirm("Are you sure you want to cancel this booking?")) return;
+
+      try {
+        const res = await fetch("/api/parking/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ booking_id: bookingId }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("Booking cancelled successfully.");
+          loadBookings(); // Reload bookings list & markers
+          await loadSpotsOnMap(); // Refresh spot markers & availability
+          await loadSpotsForPrebook(); // Refresh pre-book dropdown
+        } else {
+          alert(data.error || "Failed to cancel booking.");
+        }
+      } catch (err) {
+        alert("Network error while cancelling booking.");
+        console.error(err);
+      }
+    }
+
+    // Load bookings with cancel buttons
+    async function loadBookings() {
+      try {
+        const res = await fetch("/api/parking/bookings");
+        if (!res.ok) throw new Error("Failed to load bookings");
+        const data = await res.json();
+
+        const list = document.getElementById("bookingResults");
+        list.innerHTML = "<h3>Your Bookings:</h3>";
+
+        if (!data.bookings.length) {
+          list.innerHTML += "<p>No bookings found.</p>";
+          return;
+        }
+
+        data.bookings.forEach((b) => {
+          const bookingDiv = document.createElement("div");
+          bookingDiv.className = "booking-item";
+
+          bookingDiv.innerHTML = `
+            <div class="booking-info">
+              <strong>${b.address}</strong><br/>
+              From: ${new Date(b.start_time).toLocaleString()}<br/>
+              To: ${new Date(b.end_time).toLocaleString()}<br/>
+              Cost: $${b.cost.toFixed(2)}<br/>
+              Status: ${b.paid ? "Paid" : "Unpaid"}
+            </div>
+            <button class="booking-btn" onclick="cancelBooking(${b.id})">Cancel</button>
+          `;
+
+          list.appendChild(bookingDiv);
+
+          // Add marker for booking (blue icon)
+          new google.maps.Marker({
+            position: { lat: b.lat, lng: b.lng },
+            map: map,
+            title: "Your booking: " + b.address,
+            icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+          });
+        });
+      } catch (err) {
+        alert("Failed to load bookings.");
+        console.error(err);
+      }
+    }
   </script>
 </body>
 </html>
