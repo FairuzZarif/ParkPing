@@ -98,18 +98,38 @@
     .booking-btn:hover {
       background: #c0392b;
     }
+
+    /* Organizer Button Style */
+    #organizerBtn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #2980b9;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #organizerBtn:hover {
+      background-color: #1c5980;
+    }
   </style>
 </head>
 <body>
+  <!-- Organizer Dashboard Button -->
+  <button onclick="location.href='/organizer'" id="organizerBtn">Organizer Dashboard</button>
+
   <h1>ParkPing - Find Parking</h1>
   <div id="map" style="height: 500px; width: 100%;"></div>
-  
+
   <button onclick="loadBookings()">View My Bookings</button>
   <div id="bookingResults">No bookings loaded yet.</div>
 
   <script>
-    // Keep your original initMap completely untouched by not overriding or changing it here.
-
     async function loadBookings() {
       const bookingResults = document.getElementById('bookingResults');
       bookingResults.textContent = 'Loading bookings...';
@@ -129,7 +149,6 @@
           const div = document.createElement('div');
           div.classList.add('booking-item');
 
-          // Format dates for display
           const start = new Date(b.start_time).toLocaleString();
           const end = new Date(b.end_time).toLocaleString();
 

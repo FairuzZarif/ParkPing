@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Organizer Dashboard - ParkPing</title>
+  <script src="/static/lib.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBL6UTU-hLgN3dDIOE8uIiSK_2tb1Pj6E8&callback=initOrganizerMap" async defer></script>
+  <style>
+    /* Reset and base styling */
+    * {
+      box-sizing: border-box;
+    }
+    body, html {
+      margin: 0; padding: 0; min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #ff7e5f, #feb47b);
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 1.5rem 0 1rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      user-select: none;
+    }
+
+    #map {
+      width: 90vw;
+      max-width: 900px;
+      height: 500px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      margin-bottom: 2rem;
+    }
+
+    .form-container {
+      width: 90vw;
+      max-width: 900px;
+      background: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      margin-bottom: 2rem;
+      color: #333;
+    }
+
+    label {
+      display: block;
+      margin-top: 0.8rem;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      margin-top: 0.3rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 1.5rem;
+      background: #ff7e5f;
+      border: none;
+      color: white;
+      padding: 0.85rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      user-select: none;
+      display: inline-block;
+    }
+    button:hover {
+      background: #e26b47;
+    }
+
+    #response {
+      margin-top: 0.8rem;
+      font-weight: 600;
+      color: green;
+      min-height: 1.2em;
+    }
+
+    #organizerSpotsList div {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #organizerSpotsList div:last-child {
+      border-bottom: none;
+    }
+
+    #organizerSpotsList button {
+      background: #e74c3c;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #organizerSpotsList button:hover {
+      background: #c0392b;
+    }
+
+    /* Back button */
+    #backBtn {
+      background: #2980b9;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      transition: background-color 0.3s;
+      align-self: flex-start;
+      margin-left: 5%;
+    }
+    #backBtn:hover {
+      background-color: #1c5980;
+    }
+  </style>
+</head>
+<body>
+  <button id="backBtn" onclick="location.href='/'">← Back to Home</button>
+
+  <h1>Organizer Dashboard</h1>
+
+  <div id="map"></div>
+
+  <div class="form-container">
+    <h3>Add Parking Spot</h3>
+    <label for="address">Address</label>
+    <input id="address" type="text" placeholder="123 Main St" autocomplete="off">
+    <label for="rate">Hourly Rate ($)</label>
+    <input id="rate" type="number" step="0.01" placeholder="e.g., 3.50" autocomplete="off">
+    <input id="lat" type="hidden">
+    <input id="lng" type="hidden">
+    <button onclick="submitSpot()">Add Spot</button>
+    <div id="response"></div>
+  </div>
+
+  <div class="form-container">
+    <h3>Your Created Parking Spots</h3>
+    <div id="organizerSpotsList">Loading spots...</div>
+  </div>
+
+  <script>
+    let orgMap;
+    let orgMarkers = [];
+
+    window.initOrganizerMap = function () {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        orgMap = new google.maps.Map(document.getElementById("map"), {
+          zoom: 14,
+          center: loc
+        });
+
+        new google.maps.Marker({ position: loc, map: orgMap, title: "You are here" });
+
+        orgMap.addListener("click", function (e) {
+          const lat = e.latLng.lat();
+          const lng = e.latLng.lng();
+          document.getElementById("lat").value = lat;
+          document.getElementById("lng").value = lng;
+
+          // Remove old marker if any
+          if (orgMarkers.length > 0) {
+            orgMarkers.forEach(m => m.setMap(null));
+            orgMarkers = [];
+          }
+          const newMarker = new google.maps.Marker({
+            position: { lat, lng },
+            map: orgMap,
+            title: "New Parking Spot"
+          });
+          orgMarkers.push(newMarker);
+        });
+
+        loadOrganizerSpots();
+      }, err => {
+        alert("Error getting your location: " + err.message);
+      });
+    }
+
+    async function submitSpot() {
+      const address = document.getElementById("address").value.trim();
+      const rate = document.getElementById("rate").value.trim();
+      const lat = document.getElementById("lat").value;
+      const lng = document.getElementById("lng").value;
+
+      if (!address || !rate || !lat || !lng) {
+        alert("Please complete all fields and select a location on the map.");
+        return;
+      }
+
+      const res = await fetch('/api/organizer/add_spot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, rate, lat, lng })
+      });
+
+      const data = await res.json();
+      if (data.message) {
+        document.getElementById("response").style.color = "green";
+        document.getElementById("response").innerText = data.message;
+        // Clear inputs & marker
+        document.getElementById("address").value = '';
+        document.getElementById("rate").value = '';
+        document.getElementById("lat").value = '';
+        document.getElementById("lng").value = '';
+        orgMarkers.forEach(m => m.setMap(null));
+        orgMarkers = [];
+        loadOrganizerSpots();
+      } else {
+        document.getElementById("response").style.color = "red";
+        document.getElementById("response").innerText = data.error || 'Error adding spot';
+      }
+    }
+
+    function clearOrgMarkers() {
+      orgMarkers.forEach(marker => marker.setMap(null));
+      orgMarkers = [];
+    }
+
+    async function loadOrganizerSpots() {
+      try {
+        const res = await fetch('/api/organizer/spots');
+        const data = await res.json();
+
+        clearOrgMarkers();
+
+        const container = document.getElementById("organizerSpotsList");
+        container.innerHTML = '';
+
+        if (!data.spots || data.spots.length === 0) {
+          container.innerHTML = '<p>No parking spots created yet.</p>';
+          return;
+        }
+
+        data.spots.forEach(spot => {
+          // Add marker on map
+          const marker = new google.maps.Marker({
+            position: { lat: spot.lat, lng: spot.lng },
+            map: orgMap,
+            title: spot.address
+          });
+          orgMarkers.push(marker);
+
+          // Add to list with cancel button
+          const div = document.createElement('div');
+          div.innerHTML = `
+            <span>${spot.address} — $${spot.rate}/hr</span>
+            <button onclick="cancelSpot(${spot.id})">Cancel Spot</button>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        alert('Failed to load organizer spots.');
+        console.error(err);
+      }
+    }
+
+    async function cancelSpot(spotId) {
+      if (!confirm("Are you sure you want to cancel/delete this parking spot?")) return;
+
+      try {
+        const res = await fetch('/api/organizer/cancel_spot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spot_id: spotId })
+        });
+        const data = await res.json();
+
+        if (data.message) {
+          alert(data.message);
+          loadOrganizerSpots();
+        } else {
+          alert(data.error || 'Error canceling spot');
+        }
+      } catch (err) {
+        alert('Failed to cancel spot');
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
