@@ -214,7 +214,7 @@ def get_bookings():
         return jsonify({"error": "Unauthorized"}), 401
     db = get_db()
     bookings = db.execute("""
-        SELECT b.*, p.address, p.lat, p.lng
+        SELECT b.*, p.address, p.lat, p.lng, p.rate
         FROM bookings b
         JOIN parking_spots p ON b.spot_id = p.id
         WHERE b.user_id = ?
