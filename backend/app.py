@@ -101,9 +101,19 @@ def logout():
 # Get all available parking spots (for users)
 @app.route('/api/parking/spots')
 def get_spots():
-    if 'user_id' not in session: return jsonify({"error": "Unauthorized"}), 401
-    spots = get_db().execute("SELECT * FROM parking_spots WHERE is_available = 1").fetchall()
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    spots = db.execute("""
+        SELECT p.*, SUBSTR(u.email, 1, INSTR(u.email, '@') - 1) AS creator_name
+        FROM parking_spots p
+        JOIN users u ON p.creator_id = u.id
+        WHERE p.is_available = 1
+    """).fetchall()
+
     return jsonify({"spots": [dict(row) for row in spots]})
+
 
 # Book a parking spot
 @app.route('/api/parking/book', methods=['POST'])
@@ -216,5 +226,15 @@ def cancel_spot():
     db.commit()
     return jsonify({"message": "Spot cancelled successfully"})
 
+#Just to delete parking spot data
+'''''
+@app.route('/admin/clear_spots')
+def clear_spots():
+    db = get_db()
+    db.execute("DELETE FROM parking_spots")
+    db.commit()
+    return "All parking spots deleted."
+
+'''''
 if __name__ == '__main__':
     app.run(debug=True)
