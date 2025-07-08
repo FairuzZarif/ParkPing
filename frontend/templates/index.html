@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>ParkPing</title>
   <script src="/static/lib.js"></script>
   <script
@@ -8,7 +9,6 @@
     async defer
   ></script>
   <style>
-    /* Reset and base */
     * {
       box-sizing: border-box;
     }
@@ -31,16 +31,93 @@
       user-select: none;
     }
 
-    #map {
+    #organizerBtn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: #2980b9;
+      color: white;
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      z-index: 10;
+    }
+    #organizerBtn:hover {
+      background-color: #1c5980;
+    }
+
+    main {
       width: 90vw;
       max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      margin-top: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    #map {
+      width: 100%;
       height: 500px;
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      margin-bottom: 2rem;
     }
 
-    button {
+    #prebookForm {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      color: #333;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      align-items: center;
+    }
+
+    #prebookForm h3 {
+      flex-basis: 100%;
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+
+    #prebookForm label {
+      flex-basis: 100%;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    #prebookForm select,
+    #prebookForm input[type="datetime-local"] {
+      flex-grow: 1;
+      flex-basis: 40%;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      min-width: 180px;
+    }
+
+    #prebookForm button {
+      flex-basis: 100%;
+      max-width: 200px;
+      margin-top: 0.5rem;
+      align-self: flex-start;
+    }
+
+    #prebookResponse {
+      flex-basis: 100%;
+      margin-top: 0.5rem;
+      font-weight: 600;
+      min-height: 1.2rem;
+      color: green;
+    }
+
+    button.view-bookings-btn {
       background: #ff7e5f;
       border: none;
       color: white;
@@ -51,25 +128,22 @@
       cursor: pointer;
       transition: background-color 0.3s;
       user-select: none;
-      margin-bottom: 1.5rem;
+      align-self: flex-start;
     }
-    button:hover {
+    button.view-bookings-btn:hover {
       background: #e26b47;
     }
 
     #bookingResults {
-      width: 90vw;
-      max-width: 900px;
       background: white;
       border-radius: 12px;
       padding: 1rem 1.5rem;
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
       color: #333;
       font-size: 1rem;
-      min-height: 80px;
-      overflow-y: auto;
       max-height: 300px;
-      text-align: center;
+      overflow-y: auto;
+      width: 100%;
     }
 
     .booking-item {
@@ -98,25 +172,6 @@
     .booking-btn:hover {
       background: #c0392b;
     }
-
-    /* Organizer Button Style */
-    #organizerBtn {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: #2980b9;
-      color: white;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      font-weight: 600;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    #organizerBtn:hover {
-      background-color: #1c5980;
-    }
   </style>
 </head>
 <body>
@@ -124,73 +179,184 @@
   <button onclick="location.href='/organizer'" id="organizerBtn">Organizer Dashboard</button>
 
   <h1>ParkPing - Find Parking</h1>
-  <div id="map" style="height: 500px; width: 100%;"></div>
 
-  <button onclick="loadBookings()">View My Bookings</button>
-  <div id="bookingResults">No bookings loaded yet.</div>
+  <main>
+    <div id="map"></div>
+
+    <form id="prebookForm" onsubmit="event.preventDefault(); submitPreBooking();">
+      <h3>Pre-Book a Parking Spot</h3>
+
+      <label for="spotSelect">Select Spot:</label>
+      <select id="spotSelect" required>
+        <option value="">-- Select a spot --</option>
+      </select>
+
+      <label for="startDatetime">Start Date & Time:</label>
+      <input type="datetime-local" id="startDatetime" required />
+
+      <label for="endDatetime">End Date & Time:</label>
+      <input type="datetime-local" id="endDatetime" required />
+
+      <button type="submit">Submit Pre-Booking</button>
+
+      <div id="prebookResponse"></div>
+    </form>
+
+    <button class="view-bookings-btn" onclick="loadBookings()">View My Bookings</button>
+
+    <div id="bookingResults">No bookings loaded yet.</div>
+  </main>
 
   <script>
-    async function loadBookings() {
-      const bookingResults = document.getElementById('bookingResults');
-      bookingResults.textContent = 'Loading bookings...';
+    // We will add JS functions here or preferably keep in lib.js
 
-      try {
-        const res = await fetch('/api/parking/bookings');
-        if (!res.ok) throw new Error('Failed to load bookings');
-        const data = await res.json();
-        if (!data.bookings || data.bookings.length === 0) {
-          bookingResults.textContent = "You have no bookings.";
-          return;
+    // Hold markers in a map for easy removal on booking/pre-booking
+    let spotMarkers = new Map();
+
+    // Override initMap to store markers in spotMarkers
+    window.initMap = function () {
+      console.log("initMap called");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 14,
+            center: loc,
+          });
+
+          new google.maps.Marker({
+            position: loc,
+            map: map,
+            title: "You are here",
+          });
+
+          loadSpotsOnMap();
+          loadSpotsForPrebook();
+        },
+        (err) => {
+          alert("Error getting your location: " + err.message);
         }
+      );
+    };
 
-        bookingResults.innerHTML = ''; // Clear existing
+    // Load spots and add markers
+    async function loadSpotsOnMap() {
+      try {
+        const res = await fetch("/api/parking/spots");
+        if (!res.ok) throw new Error("Failed to load spots");
+        const data = await res.json();
 
-        data.bookings.forEach(b => {
-          const div = document.createElement('div');
-          div.classList.add('booking-item');
+        // Clear existing markers
+        spotMarkers.forEach(marker => marker.setMap(null));
+        spotMarkers.clear();
 
-          const start = new Date(b.start_time).toLocaleString();
-          const end = new Date(b.end_time).toLocaleString();
+        data.spots.forEach((spot) => {
+          const marker = new google.maps.Marker({
+            position: { lat: spot.lat, lng: spot.lng },
+            map: map,
+            title: spot.address,
+          });
 
-          div.innerHTML = `
-            <div class="booking-info">
-              <strong>${b.address}</strong><br>
-              From: ${start}<br>
-              To: ${end}<br>
-              Cost: $${b.cost.toFixed(2)}<br>
-              Paid: ${b.paid ? 'Yes' : 'No'}
-            </div>
-            <button class="booking-btn" onclick="cancelBooking(${b.id})">Cancel</button>
-          `;
+          const infoWindow = new google.maps.InfoWindow({
+            content: `
+              <div>
+                <h6>${spot.address}</h6>
+                <p>$${spot.rate}/hr</p>
+                <p><strong>Organizer:</strong> ${spot.creator_name}</p>
+                <button onclick="book(${spot.id}, ${spot.rate})">Book</button>
+              </div>`,
+          });
 
-          bookingResults.appendChild(div);
+          marker.addListener("click", () => {
+            infoWindow.open(map, marker);
+          });
+
+          // Save marker with spot id as key
+          spotMarkers.set(spot.id, marker);
         });
       } catch (err) {
-        bookingResults.textContent = 'Error loading bookings.';
         console.error(err);
+        alert("Failed to load parking spots.");
       }
     }
 
-    async function cancelBooking(bookingId) {
-      if (!confirm('Are you sure you want to cancel this booking?')) return;
+    // Load spots into the pre-book dropdown, only available spots
+    async function loadSpotsForPrebook() {
+      const select = document.getElementById("spotSelect");
       try {
-        const res = await fetch('/api/parking/cancel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ booking_id: bookingId })
-        });
+        const res = await fetch("/api/parking/spots");
+        if (!res.ok) throw new Error("Failed to load spots");
         const data = await res.json();
+
+        // Clear existing options except placeholder
+        select.innerHTML = `<option value="">-- Select a spot --</option>`;
+
+        data.spots.forEach(spot => {
+          const option = document.createElement("option");
+          option.value = spot.id;
+          option.textContent = `${spot.address} ($${spot.rate}/hr)`;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        console.error(err);
+        alert("Failed to load parking spots for pre-booking.");
+      }
+    }
+
+    // Submit the pre-book form to server
+    async function submitPreBooking() {
+      const spotId = document.getElementById("spotSelect").value;
+      const start = document.getElementById("startDatetime").value;
+      const end = document.getElementById("endDatetime").value;
+      const responseDiv = document.getElementById("prebookResponse");
+
+      responseDiv.style.color = "red"; // default error color
+      responseDiv.textContent = "";
+
+      if (!spotId) {
+        responseDiv.textContent = "Please select a parking spot.";
+        return;
+      }
+      if (!start || !end) {
+        responseDiv.textContent = "Please select start and end date/time.";
+        return;
+      }
+
+      if (new Date(start) >= new Date(end)) {
+        responseDiv.textContent = "End date/time must be after start date/time.";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/parking/prebook", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            spot_id: spotId,
+            start_time: start,
+            end_time: end,
+          }),
+        });
+
+        const data = await res.json();
+
         if (res.ok) {
-          alert(data.message);
-          loadBookings();
+          responseDiv.style.color = "green";
+          responseDiv.textContent = `Pre-book successful! Cost: $${data.cost.toFixed(2)}`;
+          // Update markers & spot dropdown after successful pre-book
+          await loadSpotsOnMap();
+          await loadSpotsForPrebook();
         } else {
-          alert('Error: ' + (data.error || 'Unknown error'));
+          responseDiv.textContent = data.error || "Pre-booking failed.";
         }
       } catch (err) {
-        alert('Request failed.');
+        responseDiv.textContent = "Request failed.";
         console.error(err);
       }
     }
+
+    // Your existing loadBookings and cancelBooking functions remain in lib.js or here...
+
   </script>
 </body>
 </html>

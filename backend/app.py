@@ -17,7 +17,8 @@ def get_db():
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
-    if db: db.close()
+    if db:
+        db.close()
 
 def init_db():
     db = sqlite3.connect(DATABASE)
@@ -79,7 +80,7 @@ def register():
                    (data['email'], generate_password_hash(data['password'])))
         db.commit()
         return jsonify({"message": "Registered"}), 201
-    except:
+    except sqlite3.IntegrityError:
         return jsonify({"error": "User exists"}), 400
 
 # Login user
@@ -114,11 +115,11 @@ def get_spots():
 
     return jsonify({"spots": [dict(row) for row in spots]})
 
-
-# Book a parking spot
+# Book a parking spot immediately (by hours)
 @app.route('/api/parking/book', methods=['POST'])
 def book():
-    if 'user_id' not in session: return jsonify({"error": "Unauthorized"}), 401
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     db = get_db()
     cur = db.cursor()
@@ -129,14 +130,76 @@ def book():
     cur.execute("UPDATE parking_spots SET is_available = 0 WHERE id = ?", (data['spot_id'],))
     cur.execute("INSERT INTO bookings (user_id, spot_id, start_time, end_time, cost, paid) VALUES (?, ?, ?, ?, ?, 0)",
                 (session['user_id'], data['spot_id'],
-                 datetime.now(), datetime.now() + timedelta(hours=float(data['hours'])), cost))
+                 datetime.now().isoformat(), (datetime.now() + timedelta(hours=float(data['hours']))).isoformat(), cost))
     db.commit()
     return jsonify({"message": "Booked", "cost": cost})
+
+# Pre-book parking spot for specified date/time range
+@app.route('/api/parking/prebook', methods=['POST'])
+def prebook():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+
+    spot_id = data.get('spot_id')
+    start_time_str = data.get('start_time')
+    end_time_str = data.get('end_time')
+
+    if not spot_id or not start_time_str or not end_time_str:
+        return jsonify({"error": "Missing parameters"}), 400
+
+    try:
+        start_time = datetime.fromisoformat(start_time_str)
+        end_time = datetime.fromisoformat(end_time_str)
+    except ValueError:
+        return jsonify({"error": "Invalid date/time format"}), 400
+
+    if start_time >= end_time:
+        return jsonify({"error": "End time must be after start time"}), 400
+
+    db = get_db()
+    cur = db.cursor()
+
+    # Check if spot is available now
+    spot = cur.execute("SELECT * FROM parking_spots WHERE id = ? AND is_available = 1", (spot_id,)).fetchone()
+    if not spot:
+        return jsonify({"error": "Spot unavailable"}), 400
+
+    # Check if any existing bookings overlap requested time for this spot
+    overlapping = cur.execute("""
+        SELECT * FROM bookings WHERE spot_id = ? AND (
+            (start_time < ? AND end_time > ?) OR
+            (start_time >= ? AND start_time < ?)
+        )
+    """, (spot_id, end_time_str, start_time_str, start_time_str, end_time_str)).fetchone()
+
+    if overlapping:
+        return jsonify({"error": "Spot is already booked for the selected time"}), 400
+
+    duration_hours = (end_time - start_time).total_seconds() / 3600
+    cost = spot['rate'] * duration_hours
+
+    # Insert booking, mark spot as unavailable if booking includes current time
+    now = datetime.now()
+    is_currently_booked = start_time <= now <= end_time
+
+    cur.execute("""INSERT INTO bookings
+                   (user_id, spot_id, start_time, end_time, cost, paid)
+                   VALUES (?, ?, ?, ?, ?, 0)""",
+                (session['user_id'], spot_id, start_time_str, end_time_str, cost))
+
+    if is_currently_booked:
+        cur.execute("UPDATE parking_spots SET is_available = 0 WHERE id = ?", (spot_id,))
+
+    db.commit()
+
+    return jsonify({"message": "Pre-booked successfully", "cost": cost})
 
 # Complete payment for a booking
 @app.route('/api/payment/complete', methods=['POST'])
 def pay():
-    if 'user_id' not in session: return jsonify({"error": "Unauthorized"}), 401
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     db = get_db()
     db.execute("UPDATE bookings SET paid = 1 WHERE id = ? AND user_id = ?", 
@@ -226,15 +289,5 @@ def cancel_spot():
     db.commit()
     return jsonify({"message": "Spot cancelled successfully"})
 
-#Just to delete parking spot data
-'''''
-@app.route('/admin/clear_spots')
-def clear_spots():
-    db = get_db()
-    db.execute("DELETE FROM parking_spots")
-    db.commit()
-    return "All parking spots deleted."
-
-'''''
 if __name__ == '__main__':
     app.run(debug=True)
