@@ -1,4 +1,4 @@
-ParkPing - Project
+ParkPing - Parking Spot Booking Project
 
 ## Features
 - Google Maps integration
