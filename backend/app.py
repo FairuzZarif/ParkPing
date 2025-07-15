@@ -269,6 +269,34 @@ def organizer_spots():
     spots = db.execute("SELECT * FROM parking_spots WHERE creator_id = ?", (session['user_id'],)).fetchall()
     return jsonify({"spots": [dict(row) for row in spots]})
 
+# Get spots created by organizer + their bookings including user email
+@app.route('/api/organizer/spots_with_bookings')
+def organizer_spots_with_bookings():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    cur = db.cursor()
+
+    # Get all spots created by this organizer
+    spots = cur.execute("SELECT * FROM parking_spots WHERE creator_id = ?", (session['user_id'],)).fetchall()
+
+    spots_list = []
+    for spot in spots:
+        bookings = cur.execute("""
+            SELECT b.*, u.email AS user_email FROM bookings b
+            JOIN users u ON b.user_id = u.id
+            WHERE b.spot_id = ?
+            ORDER BY b.start_time DESC
+        """, (spot['id'],)).fetchall()
+
+        spot_dict = dict(spot)
+        # Add list of bookings as dicts
+        spot_dict['bookings'] = [dict(b) for b in bookings]
+        spots_list.append(spot_dict)
+
+    return jsonify({"spots": spots_list})
+
 # Cancel spot created by logged-in organizer (authorization check)
 @app.route('/api/organizer/cancel_spot', methods=['POST'])
 def cancel_spot():
@@ -285,6 +313,8 @@ def cancel_spot():
     if not spot:
         return jsonify({"error": "Spot not found or unauthorized"}), 404
 
+    # Optional: Also delete bookings for this spot before deleting the spot
+    cur.execute("DELETE FROM bookings WHERE spot_id = ?", (spot_id,))
     cur.execute("DELETE FROM parking_spots WHERE id = ?", (spot_id,))
     db.commit()
     return jsonify({"message": "Spot cancelled successfully"})

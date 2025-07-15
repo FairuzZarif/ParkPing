@@ -1,5 +1,21 @@
 let map; // Make it global so other functions can access
 
+// Notification helper (assumes a #notification div exists in DOM)
+function showNotification(message, isError = false, duration = 4000) {
+  const notif = document.getElementById('notification');
+  if (!notif) {
+    console.warn('Notification element not found');
+    return;
+  }
+  notif.textContent = message;
+  notif.style.backgroundColor = isError ? '#e74c3c' : '#27ae60'; // red or green
+  notif.classList.add('show');
+  clearTimeout(notif.timeoutId);
+  notif.timeoutId = setTimeout(() => {
+    notif.classList.remove('show');
+  }, duration);
+}
+
 window.initMap = function () {
   console.log("initMap called");
   navigator.geolocation.getCurrentPosition(
@@ -42,7 +58,7 @@ window.initMap = function () {
         });
     },
     (err) => {
-      alert("Error getting your location: " + err.message);
+      showNotification("Error getting your location: " + err.message, true);
     }
   );
 };
@@ -50,7 +66,7 @@ window.initMap = function () {
 window.book = function (id, rate) {
   const hours = prompt("Enter hours:");
   if (!hours || isNaN(hours) || hours <= 0) {
-    alert("Please enter a valid number of hours.");
+    showNotification("Please enter a valid number of hours.", true);
     return;
   }
   fetch("/api/parking/book", {
@@ -60,9 +76,9 @@ window.book = function (id, rate) {
   })
     .then((r) => r.json())
     .then((data) => {
-      alert("Booked. Cost: $" + data.cost);
+      showNotification("Booked. Cost: $" + data.cost);
     })
-    .catch(() => alert("Booking failed, please try again."));
+    .catch(() => showNotification("Booking failed, please try again.", true));
 };
 
 window.loadBookings = function () {
@@ -108,7 +124,7 @@ window.loadBookings = function () {
 
       list.innerHTML += '</div>';
     })
-    .catch(() => alert("Failed to load bookings"));
+    .catch(() => showNotification("Failed to load bookings", true));
 };
 
 // Cancel booking by booking id
@@ -122,14 +138,14 @@ window.cancelBooking = function (bookingId) {
   })
     .then(async (res) => {
       if (res.ok) {
-        alert("Booking cancelled successfully.");
+        showNotification("Booking cancelled successfully.");
         loadBookings();  // refresh bookings list
         // Optional: refresh spots or prebook spots if needed
         // e.g. window.initMap();
       } else {
         const data = await res.json();
-        alert("Cancel failed: " + (data.error || "Unknown error"));
+        showNotification("Cancel failed: " + (data.error || "Unknown error"), true);
       }
     })
-    .catch(() => alert("Cancel request failed due to network error."));
+    .catch(() => showNotification("Cancel request failed due to network error.", true));
 };

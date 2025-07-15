@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Organizer Dashboard - ParkPing</title>
   <script src="/static/lib.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBL6UTU-hLgN3dDIOE8uIiSK_2tb1Pj6E8&callback=initOrganizerMap" async defer></script>
@@ -89,19 +90,19 @@
       min-height: 1.2em;
     }
 
-    #organizerSpotsList div {
+    #organizerSpotsList div.spot {
       padding: 0.6rem 0;
       border-bottom: 1px solid #eee;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 0.4rem;
     }
 
-    #organizerSpotsList div:last-child {
+    #organizerSpotsList div.spot:last-child {
       border-bottom: none;
     }
 
-    #organizerSpotsList button {
+    #organizerSpotsList button.cancel-spot-btn {
       background: #e74c3c;
       padding: 0.4rem 0.8rem;
       font-size: 0.9rem;
@@ -110,9 +111,25 @@
       color: white;
       cursor: pointer;
       transition: background-color 0.3s;
+      align-self: flex-start;
+      margin-top: 0.3rem;
+      width: fit-content;
     }
-    #organizerSpotsList button:hover {
+    #organizerSpotsList button.cancel-spot-btn:hover {
       background: #c0392b;
+    }
+
+    .bookings-list {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+
+    .booking-item {
+      margin-bottom: 0.3rem;
     }
 
     /* Back button */
@@ -144,17 +161,17 @@
   <div class="form-container">
     <h3>Add Parking Spot</h3>
     <label for="address">Address</label>
-    <input id="address" type="text" placeholder="123 Main St" autocomplete="off">
+    <input id="address" type="text" placeholder="123 Main St" autocomplete="off" />
     <label for="rate">Hourly Rate ($)</label>
-    <input id="rate" type="number" step="0.01" placeholder="e.g., 3.50" autocomplete="off">
-    <input id="lat" type="hidden">
-    <input id="lng" type="hidden">
+    <input id="rate" type="number" step="0.01" placeholder="e.g., 3.50" autocomplete="off" />
+    <input id="lat" type="hidden" />
+    <input id="lng" type="hidden" />
     <button onclick="submitSpot()">Add Spot</button>
     <div id="response"></div>
   </div>
 
   <div class="form-container">
-    <h3>Your Created Parking Spots</h3>
+    <h3>Your Created Parking Spots and Bookings</h3>
     <div id="organizerSpotsList">Loading spots...</div>
   </div>
 
@@ -162,6 +179,7 @@
     let orgMap;
     let orgMarkers = [];
 
+    // Initialize the map centered on user's location
     window.initOrganizerMap = function () {
       navigator.geolocation.getCurrentPosition(pos => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -172,6 +190,7 @@
 
         new google.maps.Marker({ position: loc, map: orgMap, title: "You are here" });
 
+        // When user clicks map, set lat/lng inputs and marker
         orgMap.addListener("click", function (e) {
           const lat = e.latLng.lat();
           const lng = e.latLng.lng();
@@ -191,11 +210,11 @@
           orgMarkers.push(newMarker);
         });
 
-        loadOrganizerSpots();
+        loadOrganizerSpotsAndBookings();
       }, err => {
         alert("Error getting your location: " + err.message);
       });
-    }
+    };
 
     async function submitSpot() {
       const address = document.getElementById("address").value.trim();
@@ -208,27 +227,33 @@
         return;
       }
 
-      const res = await fetch('/api/organizer/add_spot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, rate, lat, lng })
-      });
+      try {
+        const res = await fetch('/api/organizer/add_spot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, rate, lat, lng })
+        });
 
-      const data = await res.json();
-      if (data.message) {
-        document.getElementById("response").style.color = "green";
-        document.getElementById("response").innerText = data.message;
-        // Clear inputs & marker
-        document.getElementById("address").value = '';
-        document.getElementById("rate").value = '';
-        document.getElementById("lat").value = '';
-        document.getElementById("lng").value = '';
-        orgMarkers.forEach(m => m.setMap(null));
-        orgMarkers = [];
-        loadOrganizerSpots();
-      } else {
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById("response").style.color = "green";
+          document.getElementById("response").innerText = data.message;
+          // Clear inputs & marker
+          document.getElementById("address").value = '';
+          document.getElementById("rate").value = '';
+          document.getElementById("lat").value = '';
+          document.getElementById("lng").value = '';
+          orgMarkers.forEach(m => m.setMap(null));
+          orgMarkers = [];
+          loadOrganizerSpotsAndBookings();
+        } else {
+          document.getElementById("response").style.color = "red";
+          document.getElementById("response").innerText = data.error || 'Error adding spot';
+        }
+      } catch (err) {
         document.getElementById("response").style.color = "red";
-        document.getElementById("response").innerText = data.error || 'Error adding spot';
+        document.getElementById("response").innerText = 'Network error while adding spot.';
+        console.error(err);
       }
     }
 
@@ -237,9 +262,10 @@
       orgMarkers = [];
     }
 
-    async function loadOrganizerSpots() {
+    async function loadOrganizerSpotsAndBookings() {
       try {
-        const res = await fetch('/api/organizer/spots');
+        const res = await fetch('/api/organizer/spots_with_bookings');
+        if (!res.ok) throw new Error('Failed to load spots and bookings');
         const data = await res.json();
 
         clearOrgMarkers();
@@ -261,16 +287,37 @@
           });
           orgMarkers.push(marker);
 
-          // Add to list with cancel button
+          // Create spot div
           const div = document.createElement('div');
+          div.classList.add('spot');
+
+          // Spot address & rate + cancel button
           div.innerHTML = `
-            <span>${spot.address} — $${spot.rate}/hr</span>
-            <button onclick="cancelSpot(${spot.id})">Cancel Spot</button>
+            <strong>${spot.address} — $${spot.rate}/hr</strong>
+            <button class="cancel-spot-btn" onclick="cancelSpot(${spot.id})">Cancel Spot</button>
+            
           `;
+
+          // Bookings list
+          const bookingsDiv = document.createElement('div');
+          bookingsDiv.classList.add('bookings-list');
+
+          if (spot.bookings.length === 0) {
+            bookingsDiv.innerHTML = '<em>No bookings yet.</em>';
+          } else {
+            spot.bookings.forEach(b => {
+              const bookingItem = document.createElement('div');
+              bookingItem.classList.add('booking-item');
+              bookingItem.textContent = `User: ${b.user_email} | From: ${new Date(b.start_time).toLocaleString()} To: ${new Date(b.end_time).toLocaleString()}`;
+              bookingsDiv.appendChild(bookingItem);
+            });
+          }
+
+          div.appendChild(bookingsDiv);
           container.appendChild(div);
         });
       } catch (err) {
-        alert('Failed to load organizer spots.');
+        alert('Failed to load organizer spots and bookings.');
         console.error(err);
       }
     }
@@ -286,9 +333,9 @@
         });
         const data = await res.json();
 
-        if (data.message) {
+        if (res.ok) {
           alert(data.message);
-          loadOrganizerSpots();
+          loadOrganizerSpotsAndBookings();
         } else {
           alert(data.error || 'Error canceling spot');
         }
