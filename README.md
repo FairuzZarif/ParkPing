@@ -39,4 +39,5 @@ User View:
 
 Organizer View:
 
-![image](https://github.com/user-attachments/assets/85b843a4-e942-4ca6-9395-59720ae92d60)
+<img width="487" height="814" alt="image" src="https://github.com/user-attachments/assets/ef4960d5-5eba-4acd-b9e0-5fbb5b53c972" />
+
