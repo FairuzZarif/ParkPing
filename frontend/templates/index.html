@@ -50,7 +50,6 @@
       background-color: #1c5980;
     }
 
-    /* New logout button styling */
     #logoutBtn {
       position: absolute;
       top: 1rem;
@@ -72,7 +71,7 @@
 
     main {
       width: 90vw;
-      max-width: 900px;
+      max-width: 1100px;
       display: flex;
       flex-direction: column;
       gap: 2rem;
@@ -80,11 +79,78 @@
       margin-bottom: 3rem;
     }
 
-    #map {
+    /* Container holding map and closest spots side-by-side */
+    #mapAndClosestContainer {
+      display: flex;
+      gap: 1rem;
       width: 100%;
       height: 500px;
+    }
+
+    #map {
+      flex: 1 1 70%;
+      height: 100%;
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+
+    /* Closest spots list container */
+    #closestSpotsContainer {
+      flex: 1 1 30%;
+      background: white;
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      overflow-y: auto;
+      color: #333;
+      font-size: 0.9rem;
+      user-select: none;
+    }
+
+    #closestSpotsContainer h3 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-weight: 700;
+      color: #ff7e5f;
+      text-align: center;
+    }
+
+    .spot-item {
+      margin-bottom: 1rem;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .spot-info {
+      flex-grow: 1;
+    }
+    .spot-address {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .spot-rate, .spot-distance {
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    .book-btn {
+      background: #ff7e5f;
+      border: none;
+      color: white;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.3s;
+    }
+    .book-btn:hover {
+      background: #e26b47;
     }
 
     #prebookForm {
@@ -204,7 +270,14 @@
   <h1>ParkPing - Find Parking</h1>
 
   <main>
-    <div id="map"></div>
+    <!-- Wrap map and closest spots side-by-side -->
+    <div id="mapAndClosestContainer">
+      <div id="map"></div>
+      <div id="closestSpotsContainer">
+        <h3>Closest Parking Spots</h3>
+        <div id="closestSpotsList">Loading closest spots...</div>
+      </div>
+    </div>
 
     <form id="prebookForm" onsubmit="event.preventDefault(); submitPreBooking();">
       <h3>Pre-Book a Parking Spot</h3>
@@ -252,12 +325,17 @@
     // Hold markers in a map for easy removal on booking/pre-booking
     let spotMarkers = new Map();
 
-    // Override initMap to store markers in spotMarkers
+    // Cached spots & user location for closest spots list
+    let cachedSpots = [];
+    let cachedUserLocation = null;
+
+    // Override initMap to store markers in spotMarkers and set user location
     window.initMap = function () {
       console.log("initMap called");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          cachedUserLocation = loc;
           map = new google.maps.Map(document.getElementById("map"), {
             zoom: 14,
             center: loc,
@@ -284,6 +362,9 @@
         const res = await fetch("/api/parking/spots");
         if (!res.ok) throw new Error("Failed to load spots");
         const data = await res.json();
+
+        // Cache spots globally for closest spots list
+        cachedSpots = data.spots || [];
 
         // Clear existing markers
         spotMarkers.forEach(marker => marker.setMap(null));
@@ -313,6 +394,8 @@
           // Save marker with spot id as key
           spotMarkers.set(spot.id, marker);
         });
+
+        updateClosestSpotsList();
       } catch (err) {
         console.error(err);
         alert("Failed to load parking spots.");
@@ -491,6 +574,68 @@
         alert("Failed to load bookings.");
         console.error(err);
       }
+    }
+
+    // ------------- Closest Spots Feature -------------
+    // Calculate distance in meters between two lat/lng points
+    function calculateDistance(lat1, lng1, lat2, lng2) {
+      function toRad(x) { return x * Math.PI / 180; }
+      const R = 6371e3; // Earth radius in meters
+      const φ1 = toRad(lat1);
+      const φ2 = toRad(lat2);
+      const Δφ = toRad(lat2 - lat1);
+      const Δλ = toRad(lng2 - lng1);
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; // distance in meters
+    }
+
+    // Update the closest spots list to show spots within 5 km radius
+    function updateClosestSpotsList() {
+      const container = document.getElementById("closestSpotsList");
+      if (!cachedUserLocation || cachedSpots.length === 0) {
+        container.textContent = "Loading closest spots...";
+        return;
+      }
+
+      const radiusMeters = 5000; // 5 km radius
+
+      const spotsWithDistance = cachedSpots
+        .map(spot => ({
+          spot,
+          distance: calculateDistance(
+            cachedUserLocation.lat,
+            cachedUserLocation.lng,
+            spot.lat,
+            spot.lng
+          )
+        }))
+        .filter(({ distance }) => distance <= radiusMeters) // only within 5 km
+        .sort((a, b) => a.distance - b.distance);
+
+      const top5 = spotsWithDistance.slice(0, 5);
+
+      if (top5.length === 0) {
+        container.textContent = `No parking spots within ${(radiusMeters / 1000)} km.`;
+        return;
+      }
+
+      container.innerHTML = "";
+      top5.forEach(({ spot, distance }) => {
+        const div = document.createElement("div");
+        div.className = "spot-item";
+        div.innerHTML = `
+          <div class="spot-info">
+            <div class="spot-address">${spot.address}</div>
+            <div class="spot-rate">$${spot.rate.toFixed(2)}/hr</div>
+            <div class="spot-distance">${(distance / 1000).toFixed(2)} km away</div>
+          </div>
+          <button class="book-btn" onclick="book(${spot.id}, ${spot.rate})">Book</button>
+        `;
+        container.appendChild(div);
+      });
     }
   </script>
 </body>
