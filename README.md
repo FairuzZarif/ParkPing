@@ -35,7 +35,7 @@ IMPORTANT: Make sure you've enabled the Maps JavaScript API for your project:
 Here's what the front page looks like if you're too lazy to open the project yourself:
 User View:
 
-![image](https://github.com/user-attachments/assets/eefb268d-dcdf-4c9b-9c3a-8d6f9c0c67e6)
+<img width="453" height="629" alt="image" src="https://github.com/user-attachments/assets/3a7c86c7-9d97-45eb-8630-6185e865201d" />
 
 Organizer View:
 
