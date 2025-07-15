@@ -1,4 +1,5 @@
-# ParkPing - Complete Project
+ParkPing - Parking Spot Booking Project
+
 ## Features
 - Google Maps integration
 - User registration/login (SQLite)
@@ -31,6 +32,11 @@ IMPORTANT: Make sure you've enabled the Maps JavaScript API for your project:
 6. Search for “Maps JavaScript API”
 7. Click it → Click Enable
 
-Here's what the front page looks like, if you're too lazy to open the project yourself:
+Here's what the front page looks like if you're too lazy to open the project yourself:
+User View:
 
-![image](https://github.com/user-attachments/assets/29456330-4a40-47f6-b0ee-91a9137bce04)
+![image](https://github.com/user-attachments/assets/eefb268d-dcdf-4c9b-9c3a-8d6f9c0c67e6)
+
+Organizer View:
+
+![image](https://github.com/user-attachments/assets/85b843a4-e942-4ca6-9395-59720ae92d60)
