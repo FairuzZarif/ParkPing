@@ -1,6 +1,6 @@
-let map; // Make it global so other functions can access
+let map; // global for access in other funcs
 
-// Notification helper (assumes a #notification div exists in DOM)
+// Notification helper (requires a #notification div)
 function showNotification(message, isError = false, duration = 4000) {
   const notif = document.getElementById('notification');
   if (!notif) {
@@ -63,23 +63,71 @@ window.initMap = function () {
   );
 };
 
-window.book = function (id, rate) {
-  const hours = prompt("Enter hours:");
-  if (!hours || isNaN(hours) || hours <= 0) {
-    showNotification("Please enter a valid number of hours.", true);
+// Variables to hold booking context for modal
+let currentBookingSpotId = null;
+let currentBookingSpotRate = null;
+
+// Show booking duration modal
+function showBookingModal(spotId, rate) {
+  currentBookingSpotId = spotId;
+  currentBookingSpotRate = rate;
+  const modal = document.getElementById('durationModal');
+  const input = document.getElementById('durationInput');
+  input.value = '';
+  modal.classList.add('show');
+  input.focus();
+}
+
+// Hide booking modal
+function hideBookingModal() {
+  const modal = document.getElementById('durationModal');
+  modal.classList.remove('show');
+}
+
+// Confirm booking from modal input
+function confirmBooking() {
+  const input = document.getElementById('durationInput');
+  const hours = Number(input.value);
+  if (!hours || hours <= 0 || isNaN(hours)) {
+    alert("Please enter a valid positive number of hours.");
+    input.focus();
     return;
   }
+  hideBookingModal();
+
   fetch("/api/parking/book", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ spot_id: id, hours }),
+    body: JSON.stringify({ spot_id: currentBookingSpotId, hours }),
   })
     .then((r) => r.json())
     .then((data) => {
-      showNotification("Booked. Cost: $" + data.cost);
+      if (data.cost !== undefined) {
+        showNotification("Booked. Cost: $" + data.cost);
+        // Optionally refresh map or bookings here
+        window.initMap();
+      } else if (data.error) {
+        showNotification("Booking failed: " + data.error, true);
+      } else {
+        showNotification("Booking failed, please try again.", true);
+      }
     })
     .catch(() => showNotification("Booking failed, please try again.", true));
+}
+
+// Override old book function to open modal
+window.book = function (id, rate) {
+  showBookingModal(id, rate);
 };
+
+// Attach modal buttons listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const confirmBtn = document.getElementById('confirmDurationBtn');
+  const cancelBtn = document.getElementById('cancelDurationBtn');
+
+  confirmBtn.addEventListener('click', confirmBooking);
+  cancelBtn.addEventListener('click', hideBookingModal);
+});
 
 window.loadBookings = function () {
   fetch("/api/parking/bookings")
@@ -140,8 +188,7 @@ window.cancelBooking = function (bookingId) {
       if (res.ok) {
         showNotification("Booking cancelled successfully.");
         loadBookings();  // refresh bookings list
-        // Optional: refresh spots or prebook spots if needed
-        // e.g. window.initMap();
+        window.initMap(); // refresh map markers & availability
       } else {
         const data = await res.json();
         showNotification("Cancel failed: " + (data.error || "Unknown error"), true);

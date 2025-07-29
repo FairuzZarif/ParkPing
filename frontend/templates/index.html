@@ -115,6 +115,14 @@
       text-align: center;
     }
 
+    /* NEW: Distance slider label style */
+    #closestSpotsContainer label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #ff7e5f;
+    }
+
     .spot-item {
       margin-bottom: 1rem;
       border-bottom: 1px solid #eee;
@@ -258,6 +266,59 @@
     .booking-btn:hover {
       background: #c0392b;
     }
+
+
+    /* --- Modal styles for booking duration --- */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0; top: 0; width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal.show {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      padding: 1.5rem 2rem;
+      border-radius: 10px;
+      max-width: 300px;
+      width: 90%;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    .modal-content input[type="number"] {
+      width: 80%;
+      font-size: 1.1rem;
+      padding: 0.4rem;
+      margin: 1rem 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    .modal-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+    .modal-buttons button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    .modal-buttons button.confirm {
+      background-color: #27ae60;
+      color: white;
+    }
+    .modal-buttons button.cancel {
+      background-color: #e74c3c;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -275,6 +336,21 @@
       <div id="map"></div>
       <div id="closestSpotsContainer">
         <h3>Closest Parking Spots</h3>
+
+        <!-- NEW: Distance slider control -->
+        <label for="distanceRange" aria-label="Maximum distance in kilometers to show parking spots">
+          Max Distance (km): <span id="distanceValue">5</span>
+        </label>
+        <input
+          type="range"
+          id="distanceRange"
+          min="1"
+          max="20"
+          value="5"
+          step="1"
+          style="width: 100%; margin-bottom: 1rem;"
+        />
+
         <div id="closestSpotsList">Loading closest spots...</div>
       </div>
     </div>
@@ -303,6 +379,28 @@
     <div id="bookingResults">No bookings loaded yet.</div>
   </main>
 
+  <!-- Modal for booking duration input -->
+  <div id="durationModal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Enter Booking Duration (hours)</h3>
+      <input
+        id="durationInput"
+        type="number"
+        min="1"
+        step="1"
+        placeholder="Hours"
+        aria-describedby="durationHelp"
+      />
+      <div id="durationHelp" style="font-size:0.9rem; color:#555; margin-bottom: 1rem;">
+        Please enter a positive whole number.
+      </div>
+      <div class="modal-buttons">
+        <button class="confirm" id="confirmDurationBtn">Confirm</button>
+        <button class="cancel" id="cancelDurationBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Logout button handler
     document.getElementById('logoutBtn').addEventListener('click', async () => {
@@ -328,6 +426,17 @@
     // Cached spots & user location for closest spots list
     let cachedSpots = [];
     let cachedUserLocation = null;
+
+    // Store current radius in meters (default 5km)
+    let currentRadiusMeters = 5000;
+
+    // Update radius from slider
+    document.getElementById('distanceRange').addEventListener('input', (e) => {
+      const km = Number(e.target.value);
+      currentRadiusMeters = km * 1000; // convert km to meters
+      document.getElementById('distanceValue').textContent = km;
+      updateClosestSpotsList();
+    });
 
     // Override initMap to store markers in spotMarkers and set user location
     window.initMap = function () {
@@ -432,20 +541,14 @@
       const end = document.getElementById("endDatetime").value;
       const responseDiv = document.getElementById("prebookResponse");
 
-      responseDiv.style.color = "red"; // default error color
-      responseDiv.textContent = "";
-
-      if (!spotId) {
-        responseDiv.textContent = "Please select a parking spot.";
+      if (!spotId || !start || !end) {
+        responseDiv.textContent = "Please fill in all fields.";
+        responseDiv.style.color = "red";
         return;
       }
-      if (!start || !end) {
-        responseDiv.textContent = "Please select start and end date/time.";
-        return;
-      }
-
-      if (new Date(start) >= new Date(end)) {
-        responseDiv.textContent = "End date/time must be after start date/time.";
+      if (new Date(end) <= new Date(start)) {
+        responseDiv.textContent = "End time must be after start time.";
+        responseDiv.style.color = "red";
         return;
       }
 
@@ -453,146 +556,94 @@
         const res = await fetch("/api/parking/prebook", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            spot_id: spotId,
-            start_time: start,
-            end_time: end,
-          }),
+          body: JSON.stringify({ spot_id: spotId, start, end }),
         });
-
         const data = await res.json();
 
         if (res.ok) {
+          responseDiv.textContent = "Pre-booking successful!";
           responseDiv.style.color = "green";
-          responseDiv.textContent = `Pre-book successful! Cost: $${data.cost.toFixed(2)}`;
-          // Update markers & spot dropdown after successful pre-book
-          await loadSpotsOnMap();
-          await loadSpotsForPrebook();
+          loadBookings();
         } else {
           responseDiv.textContent = data.error || "Pre-booking failed.";
+          responseDiv.style.color = "red";
         }
       } catch (err) {
-        responseDiv.textContent = "Request failed.";
-        console.error(err);
+        responseDiv.textContent = "Network error during pre-booking.";
+        responseDiv.style.color = "red";
       }
     }
 
-    // Book immediate booking
-    async function book(id, rate) {
-      const hours = prompt("Enter hours:");
-      if (!hours || isNaN(hours) || hours <= 0) {
-        alert("Please enter a valid number of hours.");
-        return;
-      }
-      try {
-        const res = await fetch("/api/parking/book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spot_id: id, hours }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          alert("Booked. Cost: $" + data.cost.toFixed(2));
-          await loadSpotsOnMap();
-          await loadSpotsForPrebook();
-        } else {
-          alert(data.error || "Booking failed, please try again.");
-        }
-      } catch {
-        alert("Booking failed, please try again.");
-      }
-    }
-
-    // Cancel booking function
-    async function cancelBooking(bookingId) {
-      if (!confirm("Are you sure you want to cancel this booking?")) return;
-
-      try {
-        const res = await fetch("/api/parking/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ booking_id: bookingId }),
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          alert("Booking cancelled successfully.");
-          loadBookings(); // Reload bookings list & markers
-          await loadSpotsOnMap(); // Refresh spot markers & availability
-          await loadSpotsForPrebook(); // Refresh pre-book dropdown
-        } else {
-          alert(data.error || "Failed to cancel booking.");
-        }
-      } catch (err) {
-        alert("Network error while cancelling booking.");
-        console.error(err);
-      }
-    }
-
-    // Load bookings with cancel buttons
+    // Load user bookings from API
     async function loadBookings() {
+      const container = document.getElementById("bookingResults");
+      container.textContent = "Loading bookings...";
       try {
         const res = await fetch("/api/parking/bookings");
         if (!res.ok) throw new Error("Failed to load bookings");
         const data = await res.json();
 
-        const list = document.getElementById("bookingResults");
-        list.innerHTML = "<h3>Your Bookings:</h3>";
-
-        if (!data.bookings.length) {
-          list.innerHTML += "<p>No bookings found.</p>";
+        if (!data.bookings || data.bookings.length === 0) {
+          container.textContent = "No bookings found.";
           return;
         }
 
-        data.bookings.forEach((b) => {
-          const bookingDiv = document.createElement("div");
-          bookingDiv.className = "booking-item";
-
-          bookingDiv.innerHTML = `
+        container.innerHTML = "";
+        data.bookings.forEach(b => {
+          const div = document.createElement("div");
+          div.className = "booking-item";
+          div.innerHTML = `
             <div class="booking-info">
-              <strong>${b.address}</strong><br/>
-              From: ${new Date(b.start_time).toLocaleString()}<br/>
-              To: ${new Date(b.end_time).toLocaleString()}<br/>
-              Cost: $${b.cost.toFixed(2)}<br/>
-              Status: ${b.paid ? "Paid" : "Unpaid"}
+              <div><strong>${b.spot_address}</strong></div>
+              <div>From: ${new Date(b.start_datetime).toLocaleString()}</div>
+              <div>To: ${new Date(b.end_datetime).toLocaleString()}</div>
             </div>
             <button class="booking-btn" onclick="cancelBooking(${b.id})">Cancel</button>
           `;
-
-          list.appendChild(bookingDiv);
-
-          // Add marker for booking (blue icon)
-          new google.maps.Marker({
-            position: { lat: b.lat, lng: b.lng },
-            map: map,
-            title: "Your booking: " + b.address,
-            icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-          });
+          container.appendChild(div);
         });
       } catch (err) {
-        alert("Failed to load bookings.");
+        container.textContent = "Error loading bookings.";
         console.error(err);
       }
     }
 
-    // ------------- Closest Spots Feature -------------
-    // Calculate distance in meters between two lat/lng points
-    function calculateDistance(lat1, lng1, lat2, lng2) {
-      function toRad(x) { return x * Math.PI / 180; }
-      const R = 6371e3; // Earth radius in meters
-      const φ1 = toRad(lat1);
-      const φ2 = toRad(lat2);
-      const Δφ = toRad(lat2 - lat1);
-      const Δλ = toRad(lng2 - lng1);
-      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ/2) * Math.sin(Δλ/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c; // distance in meters
+    // Cancel booking API call
+    async function cancelBooking(bookingId) {
+      if (!confirm("Are you sure you want to cancel this booking?")) return;
+      try {
+        const res = await fetch(`/api/parking/bookings/${bookingId}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          alert("Booking cancelled.");
+          loadBookings();
+        } else {
+          alert("Failed to cancel booking.");
+        }
+      } catch (err) {
+        alert("Network error cancelling booking.");
+      }
     }
 
-    // Update the closest spots list to show spots within 5 km radius
+    // Calculate distance between two lat/lng points in meters using Haversine formula
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // meters
+      const toRad = (deg) => (deg * Math.PI) / 180;
+
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) *
+          Math.cos(toRad(lat2)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Update the closest spots list based on current user location and radius
     function updateClosestSpotsList() {
       const container = document.getElementById("closestSpotsList");
       if (!cachedUserLocation || cachedSpots.length === 0) {
@@ -600,25 +651,26 @@
         return;
       }
 
-      const radiusMeters = 5000; // 5 km radius
+      const radiusMeters = currentRadiusMeters; // dynamic radius from slider
 
+      // Map spots to distance and filter by radius
       const spotsWithDistance = cachedSpots
-        .map(spot => ({
+        .map((spot) => ({
           spot,
           distance: calculateDistance(
             cachedUserLocation.lat,
             cachedUserLocation.lng,
             spot.lat,
             spot.lng
-          )
+          ),
         }))
-        .filter(({ distance }) => distance <= radiusMeters) // only within 5 km
+        .filter(({ distance }) => distance <= radiusMeters)
         .sort((a, b) => a.distance - b.distance);
 
       const top5 = spotsWithDistance.slice(0, 5);
 
       if (top5.length === 0) {
-        container.textContent = `No parking spots within ${(radiusMeters / 1000)} km.`;
+        container.textContent = `No parking spots within ${(radiusMeters / 1000).toFixed(1)} km.`;
         return;
       }
 
@@ -637,6 +689,66 @@
         container.appendChild(div);
       });
     }
+
+    // Booking flow variables
+    let selectedSpotId = null;
+    let selectedSpotRate = 0;
+
+    // Book function opens modal for duration input
+    function book(spotId, rate) {
+      selectedSpotId = spotId;
+      selectedSpotRate = rate;
+      document.getElementById("durationInput").value = "";
+      showDurationModal(true);
+    }
+
+    // Show or hide modal
+    function showDurationModal(show) {
+      const modal = document.getElementById("durationModal");
+      if (show) {
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+        document.getElementById("durationInput").focus();
+      } else {
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden", "true");
+      }
+    }
+
+    // Confirm booking duration button
+    document.getElementById("confirmDurationBtn").addEventListener("click", async () => {
+      const hoursStr = document.getElementById("durationInput").value.trim();
+      const hours = Number(hoursStr);
+      if (!hoursStr || isNaN(hours) || hours <= 0 || !Number.isInteger(hours)) {
+        alert("Please enter a positive whole number for hours.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/parking/book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spot_id: selectedSpotId, duration_hours: hours }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert(`Booking successful! Total cost: $${(selectedSpotRate * hours).toFixed(2)}`);
+          showDurationModal(false);
+          loadBookings();
+        } else {
+          alert(data.error || "Booking failed.");
+        }
+      } catch (err) {
+        alert("Network error during booking.");
+      }
+    });
+
+    // Cancel modal button
+    document.getElementById("cancelDurationBtn").addEventListener("click", () => {
+      showDurationModal(false);
+    });
+
+    // Initialize the map and load spots once the Google Maps API callback fires
   </script>
 </body>
 </html>
