@@ -221,29 +221,20 @@ def get_bookings():
     """, (session['user_id'],)).fetchall()
     return jsonify({"bookings": [dict(row) for row in bookings]})
 
-# Cancel a booking
-@app.route('/api/parking/cancel', methods=['POST'])
-def cancel_booking():
+# Cancel booking via DELETE method matching frontend call
+@app.route('/api/parking/bookings/<int:booking_id>', methods=['DELETE'])
+def delete_booking(booking_id):
     if 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
-    
-    data = request.json
-    booking_id = data.get('booking_id')
-    if not booking_id:
-        return jsonify({"error": "Missing booking_id"}), 400
-    
+
     db = get_db()
     cur = db.cursor()
-
-    booking = cur.execute("SELECT * FROM bookings WHERE id = ? AND user_id = ?", 
-                          (booking_id, session['user_id'])).fetchone()
+    booking = cur.execute("SELECT * FROM bookings WHERE id = ? AND user_id = ?", (booking_id, session['user_id'])).fetchone()
     if not booking:
         return jsonify({"error": "Booking not found"}), 404
 
-    spot_id = booking['spot_id']
-
     cur.execute("DELETE FROM bookings WHERE id = ?", (booking_id,))
-    cur.execute("UPDATE parking_spots SET is_available = 1 WHERE id = ?", (spot_id,))
+    cur.execute("UPDATE parking_spots SET is_available = 1 WHERE id = ?", (booking['spot_id'],))
     db.commit()
     return jsonify({"message": "Booking canceled successfully"})
 
@@ -278,7 +269,6 @@ def organizer_spots_with_bookings():
     db = get_db()
     cur = db.cursor()
 
-    # Get all spots created by this organizer
     spots = cur.execute("SELECT * FROM parking_spots WHERE creator_id = ?", (session['user_id'],)).fetchall()
 
     spots_list = []
@@ -291,7 +281,6 @@ def organizer_spots_with_bookings():
         """, (spot['id'],)).fetchall()
 
         spot_dict = dict(spot)
-        # Add list of bookings as dicts
         spot_dict['bookings'] = [dict(b) for b in bookings]
         spots_list.append(spot_dict)
 
@@ -313,7 +302,6 @@ def cancel_spot():
     if not spot:
         return jsonify({"error": "Spot not found or unauthorized"}), 404
 
-    # Optional: Also delete bookings for this spot before deleting the spot
     cur.execute("DELETE FROM bookings WHERE spot_id = ?", (spot_id,))
     cur.execute("DELETE FROM parking_spots WHERE id = ?", (spot_id,))
     db.commit()

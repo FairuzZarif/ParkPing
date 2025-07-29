@@ -6,52 +6,66 @@
   <script src="/static/lib.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBL6UTU-hLgN3dDIOE8uIiSK_2tb1Pj6E8&callback=initOrganizerMap" async defer></script>
   <style>
-    /* Reset and base styling */
     * {
       box-sizing: border-box;
     }
+
     body, html {
-      margin: 0; padding: 0; min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #ff7e5f, #feb47b);
       color: #222;
       display: flex;
       flex-direction: column;
       align-items: center;
+      scroll-behavior: smooth;
     }
 
     h1 {
-      margin: 1.5rem 0 1rem;
+      margin: 2rem 0 1.2rem;
       font-weight: 700;
       color: #fff;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
       user-select: none;
+      font-size: 2.5rem;
     }
 
     #map {
       width: 90vw;
       max-width: 900px;
       height: 500px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       margin-bottom: 2rem;
+      border: 3px solid rgba(255,255,255,0.1);
     }
 
     .form-container {
       width: 90vw;
       max-width: 900px;
-      background: white;
-      padding: 1rem 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      background: #fff;
+      padding: 1.5rem 2rem;
+      border-radius: 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.15);
       margin-bottom: 2rem;
       color: #333;
+      transition: all 0.3s ease;
+    }
+
+    .form-container h3 {
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+      color: #444;
     }
 
     label {
       display: block;
-      margin-top: 0.8rem;
+      margin-top: 1rem;
       font-weight: 600;
+      font-size: 0.95rem;
+      color: #555;
     }
 
     input[type="text"],
@@ -62,7 +76,13 @@
       font-size: 1rem;
       border: 1px solid #ccc;
       border-radius: 8px;
-      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      border-color: #ff7e5f;
+      outline: none;
     }
 
     button {
@@ -70,17 +90,18 @@
       background: #ff7e5f;
       border: none;
       color: white;
-      padding: 0.85rem 1.5rem;
+      padding: 0.85rem 1.6rem;
       font-size: 1rem;
       font-weight: 600;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: background-color 0.3s;
-      user-select: none;
+      transition: background-color 0.3s, transform 0.2s;
       display: inline-block;
     }
+
     button:hover {
       background: #e26b47;
+      transform: translateY(-1px);
     }
 
     #response {
@@ -91,11 +112,11 @@
     }
 
     #organizerSpotsList div.spot {
-      padding: 0.6rem 0;
+      padding: 0.8rem 0;
       border-bottom: 1px solid #eee;
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 0.5rem;
     }
 
     #organizerSpotsList div.spot:last-child {
@@ -104,56 +125,55 @@
 
     #organizerSpotsList button.cancel-spot-btn {
       background: #e74c3c;
-      padding: 0.4rem 0.8rem;
+      padding: 0.5rem 1rem;
       font-size: 0.9rem;
-      border-radius: 6px;
+      border-radius: 8px;
       border: none;
       color: white;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s, transform 0.2s;
       align-self: flex-start;
-      margin-top: 0.3rem;
       width: fit-content;
     }
+
     #organizerSpotsList button.cancel-spot-btn:hover {
       background: #c0392b;
+      transform: scale(1.03);
     }
 
     .bookings-list {
-      background: #f9f9f9;
+      background: #f4f4f4;
       border-radius: 8px;
-      padding: 0.6rem 1rem;
+      padding: 0.8rem 1rem;
       margin-top: 0.5rem;
       font-size: 0.9rem;
-      color: #555;
+      color: #444;
     }
 
     .booking-item {
       margin-bottom: 0.3rem;
     }
 
-    /* Back button */
     #backBtn {
       background: #2980b9;
       color: white;
       border: none;
-      padding: 0.75rem 1.2rem;
-      border-radius: 8px;
+      padding: 0.8rem 1.3rem;
+      border-radius: 10px;
       cursor: pointer;
       font-weight: 600;
-      margin-bottom: 1rem;
-      transition: background-color 0.3s;
-      align-self: flex-start;
-      margin-left: 5%;
+      margin: 1.5rem auto 0.5rem 5%;
+      transition: background-color 0.3s, transform 0.2s;
     }
+
     #backBtn:hover {
       background-color: #1c5980;
+      transform: translateY(-1px);
     }
   </style>
 </head>
 <body>
   <button id="backBtn" onclick="location.href='/'">← Back to Home</button>
-
   <h1>Organizer Dashboard</h1>
 
   <div id="map"></div>
@@ -179,7 +199,6 @@
     let orgMap;
     let orgMarkers = [];
 
-    // Initialize the map centered on user's location
     window.initOrganizerMap = function () {
       navigator.geolocation.getCurrentPosition(pos => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -190,23 +209,23 @@
 
         new google.maps.Marker({ position: loc, map: orgMap, title: "You are here" });
 
-        // When user clicks map, set lat/lng inputs and marker
         orgMap.addListener("click", function (e) {
           const lat = e.latLng.lat();
           const lng = e.latLng.lng();
           document.getElementById("lat").value = lat;
           document.getElementById("lng").value = lng;
 
-          // Remove old marker if any
           if (orgMarkers.length > 0) {
             orgMarkers.forEach(m => m.setMap(null));
             orgMarkers = [];
           }
+
           const newMarker = new google.maps.Marker({
             position: { lat, lng },
             map: orgMap,
             title: "New Parking Spot"
           });
+
           orgMarkers.push(newMarker);
         });
 
@@ -238,13 +257,14 @@
         if (res.ok) {
           document.getElementById("response").style.color = "green";
           document.getElementById("response").innerText = data.message;
-          // Clear inputs & marker
+
           document.getElementById("address").value = '';
           document.getElementById("rate").value = '';
           document.getElementById("lat").value = '';
           document.getElementById("lng").value = '';
           orgMarkers.forEach(m => m.setMap(null));
           orgMarkers = [];
+
           loadOrganizerSpotsAndBookings();
         } else {
           document.getElementById("response").style.color = "red";
@@ -279,7 +299,6 @@
         }
 
         data.spots.forEach(spot => {
-          // Add marker on map
           const marker = new google.maps.Marker({
             position: { lat: spot.lat, lng: spot.lng },
             map: orgMap,
@@ -287,18 +306,14 @@
           });
           orgMarkers.push(marker);
 
-          // Create spot div
           const div = document.createElement('div');
           div.classList.add('spot');
 
-          // Spot address & rate + cancel button
           div.innerHTML = `
             <strong>${spot.address} — $${spot.rate}/hr</strong>
             <button class="cancel-spot-btn" onclick="cancelSpot(${spot.id})">Cancel Spot</button>
-            
           `;
 
-          // Bookings list
           const bookingsDiv = document.createElement('div');
           bookingsDiv.classList.add('bookings-list');
 
@@ -331,6 +346,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ spot_id: spotId })
         });
+
         const data = await res.json();
 
         if (res.ok) {
