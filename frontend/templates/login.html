@@ -5,103 +5,111 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login - ParkPing</title>
   <style>
-    /* Reset and base */
-    * {
-      box-sizing: border-box;
-    }
-    body, html {
-      margin: 0; padding: 1rem 0; height: 100%;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #ff7e5f, #feb47b);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #333;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
+  * {
+    box-sizing: border-box;
+  }
 
-    .login-container {
-      background: white;
-      padding: 2.5rem 3rem;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+  }
 
-    h2 {
-      margin-bottom: 1.5rem;
-      font-weight: 700;
-      color: #222;
-      font-size: 1.8rem;
-    }
+  .login-container {
+    background: white;
+    padding: 2.5rem 3rem;
+    border-radius: 20px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
 
-    form {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
+  h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 800;
+    color: #4facfe;
+    font-size: 2rem;
+  }
 
-    input {
-      padding: 1rem 1.2rem;
-      font-size: 1.1rem;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      transition: border-color 0.3s;
-    }
-    input:focus {
-      border-color: #ff7e5f;
-      outline: none;
-    }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
 
-    button {
-      padding: 1rem;
-      font-size: 1.1rem;
-      font-weight: 600;
-      background: #ff7e5f;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      user-select: none;
-    }
-    button:hover, button:focus {
-      background: #e26b47;
-    }
+  input {
+    padding: 0.85rem 1.2rem;
+    font-size: 1.05rem;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  input:focus {
+    border-color: #4facfe;
+    box-shadow: 0 0 8px rgba(79,172,254,0.4);
+    outline: none;
+  }
 
-    .error-msg {
-      margin-top: 1rem;
-      color: #e74c3c;
-      font-weight: 600;
-      display: none;
-      font-size: 0.95rem;
-    }
+  button {
+    padding: 0.85rem 1.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    background: #4facfe;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+  }
+  button:hover, button:focus {
+    background: #00c6ff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  }
 
-    /* Register button style */
-    .register-btn {
-      margin-top: 2rem;
-      background: transparent;
-      color: #ff7e5f;
-      border: 2px solid #ff7e5f;
-      padding: 0.85rem 1.2rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.3s, color 0.3s;
-      text-decoration: none;
-      display: inline-block;
-      user-select: none;
-      font-size: 1rem;
-    }
-    .register-btn:hover, .register-btn:focus {
-      background-color: #ff7e5f;
-      color: white;
-      text-decoration: none;
-    }
-  </style>
+  .error-msg {
+    margin-top: 0.5rem;
+    color: #e74c3c;
+    font-weight: 600;
+    display: none;
+    font-size: 0.95rem;
+  }
+
+  .register-btn {
+    margin-top: 1.5rem;
+    background: transparent;
+    color: #4facfe;
+    border: 2px solid #4facfe;
+    padding: 0.8rem 1.2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    user-select: none;
+    font-size: 1rem;
+  }
+  .register-btn:hover, .register-btn:focus {
+    background-color: #4facfe;
+    color: white;
+    text-decoration: none;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  }
+</style>
+
 </head>
 <body>
   <div class="login-container" role="main" aria-label="Login Form">

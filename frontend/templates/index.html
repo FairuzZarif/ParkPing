@@ -15,7 +15,7 @@
     body, html {
       margin: 0; padding: 0; height: 100%;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #ff7e5f, #feb47b);
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
       color: #222;
       display: flex;
       flex-direction: column;
@@ -25,53 +25,53 @@
 
     h1 {
       margin: 1.5rem 0 1rem;
-      font-weight: 700;
+      font-weight: 800;
       color: #fff;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      text-shadow: 0 3px 8px rgba(0,0,0,0.4);
       user-select: none;
+    }
+
+    #organizerBtn, #logoutBtn {
+      padding: 0.65rem 1.4rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      z-index: 10;
     }
 
     #organizerBtn {
       position: absolute;
       top: 1rem;
       right: 1rem;
-      background: #2980b9;
+      background: #1d72b8;
       color: white;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      font-weight: 600;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      z-index: 10;
     }
     #organizerBtn:hover {
-      background-color: #1c5980;
+      background-color: #155a8a;
+      transform: translateY(-2px);
+      box-shadow: 0 7px 20px rgba(0,0,0,0.3);
     }
 
     #logoutBtn {
       position: absolute;
       top: 1rem;
       left: 1rem;
-      background: #c0392b;
+      background: #e74c3c;
       color: white;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      font-weight: 600;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      z-index: 10;
     }
     #logoutBtn:hover {
-      background-color: #992d22;
+      background-color: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 7px 20px rgba(0,0,0,0.3);
     }
 
     main {
       width: 90vw;
-      max-width: 1100px;
+      max-width: 1200px;
       display: flex;
       flex-direction: column;
       gap: 2rem;
@@ -79,9 +79,9 @@
       margin-bottom: 3rem;
     }
 
-    /* Container holding map and closest spots side-by-side */
     #mapAndClosestContainer {
       display: flex;
+      flex-direction: row;
       gap: 1rem;
       width: 100%;
       height: 500px;
@@ -90,20 +90,19 @@
     #map {
       flex: 1 1 70%;
       height: 100%;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      border-radius: 20px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
     }
 
-    /* Closest spots list container */
     #closestSpotsContainer {
       flex: 1 1 30%;
-      background: white;
-      border-radius: 12px;
+      background: #fff;
+      border-radius: 20px;
       padding: 1rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
       overflow-y: auto;
       color: #333;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       user-select: none;
     }
 
@@ -111,13 +110,13 @@
       margin-top: 0;
       margin-bottom: 1rem;
       font-weight: 700;
-      color: #ff7e5f;
+      color: #4facfe;
       text-align: center;
     }
 
     .spot-item {
       margin-bottom: 1rem;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #f0f0f0;
       padding-bottom: 0.5rem;
       display: flex;
       justify-content: space-between;
@@ -138,26 +137,28 @@
     }
 
     .book-btn {
-      background: #ff7e5f;
+      background: #4facfe;
       border: none;
       color: white;
-      padding: 0.3rem 0.7rem;
+      padding: 0.35rem 0.8rem;
       font-size: 0.85rem;
       font-weight: 600;
-      border-radius: 6px;
+      border-radius: 50px;
       cursor: pointer;
       user-select: none;
-      transition: background-color 0.3s;
+      transition: all 0.3s ease;
     }
     .book-btn:hover {
-      background: #e26b47;
+      background: #00c6ff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
 
     #prebookForm {
       background: white;
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
       color: #333;
       display: flex;
       flex-wrap: wrap;
@@ -169,6 +170,7 @@
       flex-basis: 100%;
       margin-top: 0;
       margin-bottom: 1rem;
+      color: #4facfe;
     }
 
     #prebookForm label {
@@ -181,18 +183,37 @@
     #prebookForm input[type="datetime-local"] {
       flex-grow: 1;
       flex-basis: 40%;
-      padding: 0.5rem;
-      border-radius: 8px;
+      padding: 0.55rem;
+      border-radius: 12px;
       border: 1px solid #ccc;
       font-size: 1rem;
       min-width: 180px;
+      transition: border 0.3s;
+    }
+    #prebookForm select:focus,
+    #prebookForm input:focus {
+      border-color: #4facfe;
+      outline: none;
     }
 
     #prebookForm button {
       flex-basis: 100%;
-      max-width: 200px;
+      max-width: 220px;
       margin-top: 0.5rem;
       align-self: flex-start;
+      background: #4facfe;
+      color: white;
+      font-weight: 600;
+      padding: 0.7rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    #prebookForm button:hover {
+      background: #00c6ff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
 
     #prebookResponse {
@@ -204,36 +225,38 @@
     }
 
     button.view-bookings-btn {
-      background: #ff7e5f;
+      background: #4facfe;
       border: none;
       color: white;
-      padding: 0.85rem 1.5rem;
+      padding: 1rem 2rem;
       font-size: 1rem;
       font-weight: 600;
-      border-radius: 8px;
+      border-radius: 50px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.3s ease;
       user-select: none;
       align-self: flex-start;
     }
     button.view-bookings-btn:hover {
-      background: #e26b47;
+      background: #00c6ff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
 
     #bookingResults {
       background: white;
-      border-radius: 12px;
-      padding: 1rem 1.5rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      border-radius: 20px;
+      padding: 1.2rem 1.5rem;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.2);
       color: #333;
       font-size: 1rem;
-      max-height: 300px;
+      max-height: 320px;
       overflow-y: auto;
       width: 100%;
     }
 
     .booking-item {
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #f0f0f0;
       padding: 0.8rem 0;
       display: flex;
       justify-content: space-between;
@@ -247,20 +270,21 @@
 
     .booking-btn {
       background: #e74c3c;
-      padding: 0.4rem 0.8rem;
+      padding: 0.5rem 0.9rem;
       font-size: 0.9rem;
-      border-radius: 6px;
+      border-radius: 50px;
       border: none;
       color: white;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.3s ease;
     }
     .booking-btn:hover {
       background: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
 
-
-    /* --- Modal styles for booking duration --- */
+    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -275,19 +299,19 @@
     }
     .modal-content {
       background: white;
-      padding: 1.5rem 2rem;
-      border-radius: 10px;
-      max-width: 300px;
+      padding: 2rem;
+      border-radius: 20px;
+      max-width: 320px;
       width: 90%;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
       text-align: center;
     }
     .modal-content input[type="number"] {
       width: 80%;
       font-size: 1.1rem;
-      padding: 0.4rem;
+      padding: 0.5rem;
       margin: 1rem 0;
-      border-radius: 6px;
+      border-radius: 12px;
       border: 1px solid #ccc;
     }
     .modal-buttons {
@@ -296,20 +320,31 @@
       gap: 1rem;
     }
     .modal-buttons button {
-      padding: 0.5rem 1rem;
+      padding: 0.55rem 1.2rem;
       font-size: 1rem;
-      border-radius: 6px;
+      border-radius: 50px;
       border: none;
       cursor: pointer;
       user-select: none;
+      transition: all 0.3s ease;
     }
     .modal-buttons button.confirm {
       background-color: #27ae60;
       color: white;
     }
+    .modal-buttons button.confirm:hover {
+      background-color: #1e8449;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
     .modal-buttons button.cancel {
       background-color: #e74c3c;
       color: white;
+    }
+    .modal-buttons button.cancel:hover {
+      background-color: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
     }
   </style>
 </head>
