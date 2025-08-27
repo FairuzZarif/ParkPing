@@ -1,6 +1,28 @@
-let map; // global for access in other funcs
+/**
+ * lib.js - Frontend logic for ParkPing app
+ *
+ * Responsibilities:
+ *  - Initialize Google Maps and show user location
+ *  - Fetch and display available parking spots
+ *  - Allow users to book parking spots with a duration modal
+ *  - Load and manage user bookings (display, cancel, refresh)
+ *  - Show notifications for user feedback
+ *
+ * Dependencies:
+ *  - Google Maps JavaScript API
+ *  - Backend API endpoints (/api/parking/spots, /api/parking/book, /api/parking/bookings, /api/parking/cancel)
+ *  - HTML elements: #map, #notification, #durationModal, #durationInput, #confirmDurationButton, #cancelDurationButton, #bookingResults
+ */
 
-// Notification helper (requires a #notification div)
+let map; // Global reference to the Google Maps instance
+
+/**
+ * Show a temporary notification message at the top of the UI
+ *
+ * @param {string} message - The text message to display
+ * @param {boolean} [isError=false] - Whether to show an error or success message
+ * @param {number} [duration=4000] - How long the message stays visible (duration is in ms)
+ */
 function showNotification(message, isError = false, duration = 4000) {
   const notif = document.getElementById('notification');
   if (!notif) {
@@ -8,7 +30,7 @@ function showNotification(message, isError = false, duration = 4000) {
     return;
   }
   notif.textContent = message;
-  notif.style.backgroundColor = isError ? '#e74c3c' : '#27ae60'; // red or green
+  notif.style.backgroundColor = isError ? '#e74c3c' : '#27ae60';
   notif.classList.add('show');
   clearTimeout(notif.timeoutId);
   notif.timeoutId = setTimeout(() => {
@@ -16,6 +38,10 @@ function showNotification(message, isError = false, duration = 4000) {
   }, duration);
 }
 
+/**
+ * Initialize the Google Map centered on the user's location
+ * Fetches available parking spots and adds markers for them
+ */
 window.initMap = function () {
   console.log("initMap called");
   navigator.geolocation.getCurrentPosition(
@@ -25,12 +51,15 @@ window.initMap = function () {
         zoom: 14,
         center: loc,
       });
+
+      // Marker for user’s location
       new google.maps.Marker({
         position: loc,
         map: map,
         title: "You are here",
       });
 
+      // Fetch and display available parking spots
       fetch("/api/parking/spots")
         .then((r) => r.json())
         .then((data) => {
@@ -41,6 +70,7 @@ window.initMap = function () {
               title: spot.address,
             });
 
+            // InfoWindow shows details and booking option
             const infoWindow = new google.maps.InfoWindow({
               content: `
                 <div>
@@ -63,11 +93,16 @@ window.initMap = function () {
   );
 };
 
-// Variables to hold booking context for modal
-let currentBookingSpotId = null;
-let currentBookingSpotRate = null;
+//Booking modal state
+let currentBookingSpotId = null;   // Active spot being booked
+let currentBookingSpotRate = null; // Rate of the active spot
 
-// Show booking duration modal
+/**
+ * Show the booking modal where the user enters duration
+ *
+ * @param {number} spotId - ID of the spot to book
+ * @param {number} rate - Hourly rate of the spot
+ */
 function showBookingModal(spotId, rate) {
   currentBookingSpotId = spotId;
   currentBookingSpotRate = rate;
@@ -78,13 +113,16 @@ function showBookingModal(spotId, rate) {
   input.focus();
 }
 
-// Hide booking modal
+/** Hide the booking duration modal. */
 function hideBookingModal() {
   const modal = document.getElementById('durationModal');
   modal.classList.remove('show');
 }
 
-// Confirm booking from modal input
+/**
+ * Confirm the booking with user-entered duration
+ * Sends request to backend and refreshes map on success
+ */
 function confirmBooking() {
   const input = document.getElementById('durationInput');
   const hours = Number(input.value);
@@ -104,8 +142,7 @@ function confirmBooking() {
     .then((data) => {
       if (data.cost !== undefined) {
         showNotification("Booked. Cost: $" + data.cost);
-        // Optionally refresh map or bookings here
-        window.initMap();
+        window.initMap(); // Refresh map markers
       } else if (data.error) {
         showNotification("Booking failed: " + data.error, true);
       } else {
@@ -115,20 +152,29 @@ function confirmBooking() {
     .catch(() => showNotification("Booking failed, please try again.", true));
 }
 
-// Override old book function to open modal
+/**
+ * Open booking modal when user clicks "Book" button on a spot
+ * Overrides the old book() function
+ *
+ * @param {number} id - ID of the spot
+ * @param {number} rate - Hourly rate
+ */
 window.book = function (id, rate) {
   showBookingModal(id, rate);
 };
 
-// Attach modal buttons listeners
+// Attach modal button listeners on page load
 document.addEventListener('DOMContentLoaded', () => {
   const confirmBtn = document.getElementById('confirmDurationBtn');
   const cancelBtn = document.getElementById('cancelDurationBtn');
-
   confirmBtn.addEventListener('click', confirmBooking);
   cancelBtn.addEventListener('click', hideBookingModal);
 });
 
+/**
+ * Load all bookings of the current user and display them in the DOM
+ * Adds blue markers on the map for each booking
+ */
 window.loadBookings = function () {
   fetch("/api/parking/bookings")
     .then((r) => r.json())
@@ -162,6 +208,7 @@ window.loadBookings = function () {
           </div>
         `;
 
+        // Blue marker for booked spots
         new google.maps.Marker({
           position: { lat: b.lat, lng: b.lng },
           map: map,
@@ -175,7 +222,12 @@ window.loadBookings = function () {
     .catch(() => showNotification("Failed to load bookings", true));
 };
 
-// Cancel booking by booking id
+/**
+ * Cancel an existing booking
+ * Confirms with the user, then calls backend to cancel
+ *
+ * @param {number} bookingId - ID of the booking to cancel
+ */
 window.cancelBooking = function (bookingId) {
   if (!confirm("Are you sure you want to cancel this booking?")) return;
 
@@ -187,8 +239,8 @@ window.cancelBooking = function (bookingId) {
     .then(async (res) => {
       if (res.ok) {
         showNotification("Booking cancelled successfully.");
-        loadBookings();  // refresh bookings list
-        window.initMap(); // refresh map markers & availability
+        loadBookings();   // Refresh bookings list
+        window.initMap(); // Refresh map markers
       } else {
         const data = await res.json();
         showNotification("Cancel failed: " + (data.error || "Unknown error"), true);

@@ -1,3 +1,21 @@
+
+"""
+ParkPing Backend (Flask + SQLite)
+---------------------------------
+
+This Flask app powers the ParkPing web application.
+It provides authentication, parking spot management,
+and booking APIs for users and organizers.
+
+Features:
+- User authentication (register, login, logout)
+- Organizer parking spot creation and management
+- Booking and pre-booking with cost calculation
+- Integration with frontend (HTML, JS, Google Maps)
+
+Author: Fairuz
+"""
+
 from flask import Flask, request, session, jsonify, g, render_template, redirect
 import sqlite3
 from datetime import datetime, timedelta
